@@ -1,7 +1,3 @@
-Here's a **`README.md`** for your **mama VCS** project, which includes installation steps, instructions on adding it to the PATH, and a detailed guide to using the commands.
-
----
-
 # **Mama VCS**  
 A simple version control system (VCS) implemented in Python, allowing users to track changes, commit files, and manage repositories in a simple way.
 
@@ -139,12 +135,3 @@ mama itihas
 
 ## **License**
 This project is open-source and free to use.
-
----
-
-## **Credits**
-Special thanks to the developers and contributors for creating **Mama VCS**. Happy coding! 🎉
-
----
-
-This **`README.md`** provides a structured introduction to your tool, with installation instructions, PATH setup, and a comprehensive command guide. Let me know if any adjustments are needed! 😊
