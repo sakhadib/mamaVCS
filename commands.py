@@ -62,12 +62,16 @@ class DiffCommand:
 
     def execute(self):
         repo = Repository()
-        if self.file_to_compare:
-            # Compare working file with the last commit
-            self.compare_with_last_commit(repo, self.file_to_compare)
+
+        if len(self.args) == 2:
+            # Compare two specific commits
+            repo.compare_commits(self.args[0], self.args[1])
+        elif len(self.args) == 1:
+            # Compare working directory with a specific commit
+            repo.compare_with_commit(self.args[0])
         else:
-            # Compare two commits
-            self.compare_commits(repo, self.commit_id_1, self.commit_id_2)
+            # Compare latest and previous commits
+            repo.compare_latest_with_previous()
 
     def compare_with_last_commit(self, repo, filename):
         """Compare a working file with the last committed version."""
@@ -123,6 +127,17 @@ class DiffCommand:
 
 
 
+class RollbackCommand:
+    """Rollback to a specific or the previous commit."""
+    def __init__(self, args):
+        self.commit_id = args[0] if args else None
+
+    def execute(self):
+        repo = Repository()
+        if self.commit_id:
+            repo.rollback(self.commit_id)
+        else:
+            repo.rollback_to_previous()
 
 
 

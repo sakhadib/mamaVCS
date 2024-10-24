@@ -3,6 +3,7 @@
 import os
 import shutil
 import hashlib
+import difflib
 from datetime import datetime
 
 class Repository:
@@ -40,16 +41,42 @@ class Repository:
         print(f"Dekhlam {filename}")
 
     def add_all(self):
-        """Add all untracked files."""
-        exclusions = self.load_exclusions()
+        """Stage only modified or new files."""
+        last_commit = self.get_last_commit()
+        if not last_commit:
+            print("Pechone kichu nai mama, sob new dhorte hobe.")
+            self.stage_new_files()
+            return
+
+        # Compare working directory files with the latest commit
         for root, _, files in os.walk("."):
             for file in files:
                 filepath = os.path.join(root, file)
                 relative_path = os.path.relpath(filepath, ".")
-                if self.is_excluded(relative_path, exclusions):
-                    continue
-                if not self.is_tracked(relative_path):
+                if not self.is_excluded(relative_path, self.load_exclusions()):
+                    if self.is_modified_or_new(relative_path, last_commit):
+                        self.add(relative_path)  # Stage only modified or new files
+                        
+    def is_modified_or_new(self, filename, commit_id):
+        """Check if a file is new or modified compared to the last commit."""
+        commit_file = os.path.join(self.COMMITS_DIR, commit_id, filename)
+        if not os.path.exists(commit_file):
+            return True  # New file
+
+        # Check if the content has changed
+        return self.hash_file(filename) != self.hash_file(commit_file)
+    
+    
+    def stage_new_files(self):
+        """Stage all files as new when no prior commits exist."""
+        for root, _, files in os.walk("."):
+            for file in files:
+                filepath = os.path.join(root, file)
+                relative_path = os.path.relpath(filepath, ".")
+                if not self.is_excluded(relative_path, self.load_exclusions()):
                     self.add(relative_path)
+                    
+                    
 
     def is_tracked(self, filename):
         """Check if a file is already tracked."""
@@ -196,3 +223,93 @@ class Repository:
         for file in staged_files:
             print(f"  {file} (rakha ache)")
         print(f"Total {len(staged_files)} ta file rakha ache mama repository te.")
+        
+        
+        
+    def rollback(self, commit_id):
+        """Rollback to a specific commit."""
+        commit_folder = os.path.join(self.COMMITS_DIR, commit_id)
+        
+        if not os.path.exists(commit_folder):
+            print(f"Commit {commit_id} er information pailam na mama.")
+            return
+
+        # Restore the files from the specified commit
+        for filename in os.listdir(commit_folder):
+            commit_file = os.path.join(commit_folder, filename)
+            shutil.copy2(commit_file, filename)  # Copy file back to working directory
+
+        print(f"Commit {commit_id} er file gulo restore korsi, mama.")
+        
+    
+    def rollback_to_previous(self):
+        """Rollback to the previous commit."""
+        commits = sorted(os.listdir(self.COMMITS_DIR), reverse=True)
+        if len(commits) < 2:
+            print("Pechone jawar commit nai mama.")
+            return
+
+        previous_commit = commits[1]  # Second latest commit
+        self.rollback(previous_commit)
+        print(f"Pechone giya {previous_commit} commit ta restore korsi, mama.")
+        
+        
+    def compare_with_commit(self, commit_id):
+        """Compare working directory with the given commit."""
+        commit_folder = os.path.join(self.COMMITS_DIR, commit_id)
+        if not os.path.exists(commit_folder):
+            print(f"Commit {commit_id} nai mama.")
+            return
+
+        for filename in os.listdir(commit_folder):
+            commit_file = os.path.join(commit_folder, filename)
+            if os.path.exists(filename):
+                self.print_diff(commit_file, filename)
+            else:
+                print(f"{filename} er itihas nai.")
+                
+                
+                
+    def compare_latest_with_previous(self):
+        """Compare the latest and previous commits."""
+        commits = sorted(os.listdir(self.COMMITS_DIR), reverse=True)
+        if len(commits) < 2:
+            print("Compare korar jonno komse mama.")
+            return
+
+        self.compare_commits(commits[0], commits[1])
+        
+        
+    def print_diff(self, file1, file2):
+        """Print the unified diff between two files."""
+        with open(file1, 'r') as f1, open(file2, 'r') as f2:
+            diff = difflib.unified_diff(
+                f1.readlines(), f2.readlines(),
+                fromfile=file1, tofile=file2
+            )
+            print(''.join(diff))
+            
+            
+    def compare_commits(self, commit1, commit2):
+        """Compare files between two commits."""
+        commit_folder1 = os.path.join(self.COMMITS_DIR, commit1)
+        commit_folder2 = os.path.join(self.COMMITS_DIR, commit2)
+
+        if not os.path.exists(commit_folder1) or not os.path.exists(commit_folder2):
+            print(f"Commit {commit1} or {commit2} er information nai, mama.")
+            return
+
+        files1 = set(os.listdir(commit_folder1))
+        files2 = set(os.listdir(commit_folder2))
+        all_files = files1 | files2  # Union of both sets
+
+        for file in all_files:
+            file1 = os.path.join(commit_folder1, file)
+            file2 = os.path.join(commit_folder2, file)
+
+            if not os.path.exists(file1):
+                print(f"{file} only found in {commit2}.")
+            elif not os.path.exists(file2):
+                print(f"{file} only found in {commit1}.")
+            else:
+                self.print_diff(file1, file2)
