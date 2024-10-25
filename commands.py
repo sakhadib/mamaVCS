@@ -2,6 +2,8 @@
 
 import difflib
 import os
+import subprocess
+import shutil
 
 from repository import Repository
 
@@ -165,157 +167,19 @@ class LogCommand:
 
 
 
-
-
-
-
 class DiffCommand:
-    """Compare files between commits or with the working directory."""
-
-
-
+    """Compare two commits and display the differences."""
 
     def __init__(self, args):
-        """
-        Initializes the command with the given arguments.
-
-        Args:
-            args (list): A list of arguments. It can either be:
-                - A single argument representing the file to compare with the last commit.
-                - Two arguments representing the commit IDs to compare.
-
-        Raises:
-            ValueError: If the number of arguments is not 1 or 2.
-        """
-        if len(args) == 1:
-            self.file_to_compare = args[0]  # Compare working file with the last commit
-            self.commit_id = None
-        elif len(args) == 2:
-            self.commit_id_1 = args[0]
-            self.commit_id_2 = args[1]
-            self.file_to_compare = None
-        else:
-            raise ValueError("Usage: mama diff <file> | <commit1> <commit2>")
-
-
-
-
-
+        if len(args) != 2:
+            raise ValueError("Usage: mama alada_ki <commit_id_1> <commit_id_2>")
+        self.commit_id_1 = args[0]
+        self.commit_id_2 = args[1]
 
     def execute(self):
-        """
-        Executes the comparison of commits based on the provided arguments.
-        Depending on the number of arguments passed, this method performs different types of comparisons:
-        - If two arguments are provided, it compares two specific commits.
-        - If one argument is provided, it compares the working directory with a specific commit.
-        - If no arguments are provided, it compares the latest commit with the previous commit.
-        Args:
-            None (uses self.args to determine the comparison type)
-        Raises:
-            ValueError: If the number of arguments is not 0, 1, or 2.
-        """
+        """Execute the comparison between two commits."""
         repo = Repository()
-
-        if len(self.args) == 2:
-            # Compare two specific commits
-            repo.compare_commits(self.args[0], self.args[1])
-        elif len(self.args) == 1:
-            # Compare working directory with a specific commit
-            repo.compare_with_commit(self.args[0])
-        else:
-            # Compare latest and previous commits
-            repo.compare_latest_with_previous()
-
-
-
-
-
-
-    def compare_with_last_commit(self, repo, filename):
-        """
-        Compare the specified file with its version in the last commit.
-        Args:
-            repo: The repository object that provides access to the commit history.
-            filename: The name of the file to compare.
-        Returns:
-            None. Prints the differences between the current file and the file in the last commit.
-            If the last commit or the file in the last commit does not exist, prints an appropriate message.
-        """
-
-        last_commit = repo.get_last_commit()
-        if not last_commit:
-            print("Ager kichu paitesi na mama sorry")
-            return
-
-        commit_file = os.path.join(last_commit, filename)
-        if not os.path.exists(commit_file):
-            print(f"Eije file {filename} . Etar to mama itihas nai amar kache")
-            return
-
-        with open(commit_file, 'r') as f1, open(filename, 'r') as f2:
-            diff = difflib.unified_diff(
-                f1.readlines(), f2.readlines(),
-                fromfile=f'Commit: {last_commit}/{filename}',
-                tofile=f'Working: {filename}'
-            )
-            print(''.join(diff))
-
-
-
-
-
-
-    def compare_commits(self, repo, commit1, commit2):
-        """
-        Compare the differences between two commits in a repository.
-        Args:
-            repo (Repository): The repository object.
-            commit1 (str): The identifier of the first commit.
-            commit2 (str): The identifier of the second commit.
-        Returns:
-            None
-        Prints:
-            - A message if either of the commits does not exist.
-            - A message indicating which files were added or removed between the commits.
-            - The unified diff of the files that exist in both commits but have differences.
-        """
-        
-        commit_folder1 = os.path.join(Repository.COMMITS_DIR, commit1)
-        commit_folder2 = os.path.join(Repository.COMMITS_DIR, commit2)
-
-        if not os.path.exists(commit_folder1) or not os.path.exists(commit_folder2):
-            print("ei commit gulo mama itihas nai")
-            return
-
-        files1 = set(os.listdir(commit_folder1))
-        files2 = set(os.listdir(commit_folder2))
-        all_files = files1 | files2  # Union of both sets
-
-        for file in all_files:
-            file1 = os.path.join(commit_folder1, file)
-            file2 = os.path.join(commit_folder2, file)
-
-            if not os.path.exists(file1):
-                print(f"{file} rakhsi {commit2} ekhane.")
-                continue
-            elif not os.path.exists(file2):
-                print(f"{file} falay disi {commit2} ekhan theke.")
-                continue
-
-            with open(file1, 'r') as f1, open(file2, 'r') as f2:
-                diff = difflib.unified_diff(
-                    f1.readlines(), f2.readlines(),
-                    fromfile=f'{commit1}/{file}',
-                    tofile=f'{commit2}/{file}'
-                )
-                print(''.join(diff))
-
-
-
-
-
-
-
+        repo.compare_commits(self.commit_id_1, self.commit_id_2)
 
 
 
@@ -329,24 +193,75 @@ class DiffCommand:
 
 
 class RollbackCommand:
-    """Rollback to a specific or the previous commit."""
+    """Rollback to a specific commit."""
     def __init__(self, args):
-        self.commit_id = args[0] if args else None
+        if not args:
+            raise ValueError("Commit ID is required for rollback.")
+        self.commit_id = args[0]
 
+    def execute(self):
+        """Execute the rollback to the specified commit."""
+        repo = Repository()
+        repo.rollback(self.commit_id)
+
+
+
+
+class CommitDetailsCommand:
+    """
+    Command to display details of a specific commit.
+    """
+
+    def __init__(self, args):
+        if not args:
+            raise ValueError("Commit ID is required for this command.")
+        self.commit_id = args[0]
 
     def execute(self):
         """
-        Executes the rollback operation on the repository.
-
-        If a specific commit ID is provided, the repository will be rolled back to that commit.
-        Otherwise, the repository will be rolled back to the previous commit.
-
-        Attributes:
-            commit_id (str): The ID of the commit to roll back to. If None, the repository will roll back to the previous commit.
+        Executes the command to show details of a specific commit.
         """
         repo = Repository()
-        if self.commit_id:
-            repo.rollback(self.commit_id)
-        else:
-            repo.rollback_to_previous()
+        repo.show_commit_details(self.commit_id)
+        
+        
 
+
+
+class PullRepoCommand:
+    """Command to pull the latest files from a GitHub repository."""
+
+    def __init__(self, args):
+        if not args:
+            raise ValueError("Repository link is required.")
+        self.repo_url = args[0]
+
+    def execute(self):
+        """Execute the command to pull the latest files."""
+        try:
+            # Ask the user for a folder name
+            folder_name = input("Enter the name of the new folder to store the files: ").strip()
+            if not folder_name:
+                raise ValueError("Folder name cannot be empty.")
+
+            # Step 1: Clone the repository with depth 1 into a temporary folder
+            subprocess.run(
+                ["git", "clone", "--depth", "1", self.repo_url, "mama_repo"],
+                check=True
+            )
+
+            # Step 2: Create the user-specified folder
+            os.makedirs(folder_name, exist_ok=True)
+
+            # Step 3: Move the files from mama_repo to the new folder
+            for item in os.listdir("mama_repo"):
+                shutil.move(os.path.join("mama_repo", item), folder_name)
+
+            # Step 4: Clean up the temporary repository folder
+            shutil.rmtree("mama_repo")
+            print(f"Files successfully pulled into '{folder_name}', mama.")
+
+        except subprocess.CalledProcessError:
+            print("Git cloning failed. Check the repository link.")
+        except Exception as e:
+            print(f"Error: {e}")

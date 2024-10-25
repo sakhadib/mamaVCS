@@ -1,7 +1,7 @@
 # command_factory.py
 
 from commands import InitCommand, AddCommand, CommitCommand, StatusCommand, LogCommand, DiffCommand
-from commands import RollbackCommand, CommitDetailsCommand, PullRepoCommand
+from commands import RollbackCommand, CommitDetailsCommand
 
 class CommandFactory:
     """Factory to create command objects based on user input."""
@@ -33,11 +33,9 @@ class CommandFactory:
             "dekho": AddCommand,
             "rakho": CommitCommand,
             "ki_obostha": StatusCommand,
-            "itihas": LogCommand,
-            "dekhao": CommitDetailsCommand,
+            "itihas": LogCommand if not args else CommitDetailsCommand,
             "alada_ki": DiffCommand,
             "fire_jao": RollbackCommand,
-            "niye_aso": PullRepoCommand,
         }
 
         if command_name not in commands:
@@ -45,7 +43,7 @@ class CommandFactory:
 
         # Handle commands with and without arguments
         command_class = commands[command_name]
-        if command_name == "shuru" or command_name == "ki_obostha" or command_name == "itihas":
+        if command_name == "shuru" or command_name == "ki_obostha":
             return command_class()  # No arguments needed
         else:
             return command_class(args)  # Pass args for commands that need them

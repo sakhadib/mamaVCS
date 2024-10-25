@@ -627,133 +627,29 @@ class Repository:
 
     def rollback(self, commit_id):
         """
-        Rollback to a specified commit by restoring relevant files
-        and removing commit history after the target commit.
+        Rollback the repository to a specified commit.
+        This method restores the files from the specified commit folder back to the working directory.
+        Args:
+            commit_id (str): The ID of the commit to rollback to.
+        Returns:
+            None
+        Prints:
+            A message indicating whether the commit was found and the files were restored.
         """
+
         commit_folder = os.path.join(self.COMMITS_DIR, commit_id)
+        
         if not os.path.exists(commit_folder):
             print(f"Commit {commit_id} er information pailam na mama.")
             return
 
-        # Step 1: Delete files created after the target commit
-        self.delete_files_after_commit(commit_id)
+        # Restore the files from the specified commit
+        for filename in os.listdir(commit_folder):
+            commit_file = os.path.join(commit_folder, filename)
+            shutil.copy2(commit_file, filename)  # Copy file back to working directory
 
-        # Step 2: Restore files from the most recent commit <= target commit
-        self.restore_files_to_commit(commit_id)
+        print(f"Commit {commit_id} er file gulo restore korsi, mama.")
 
-        # Step 3: Verify hashes of restored files
-        self.verify_restored_files()
-
-        # Step 4: Delete commit history after the target commit
-        self.delete_commit_history_after(commit_id)
-
-        # Step 5: Store rollback information in rollback.json
-        self.log_rollback(commit_id)
-
-        print(f"Successfully rolled back to commit {commit_id}, mama.")
-
-
-
-
-
-
-
-    def delete_files_after_commit(self, commit_id):
-        """Delete files created after the target commit."""
-        all_commits = sorted(os.listdir(self.COMMITS_DIR))
-        commits_to_check = all_commits[all_commits.index(commit_id) + 1:]
-
-        files_to_delete = set()
-        for commit in commits_to_check:
-            commit_folder = os.path.join(self.COMMITS_DIR, commit)
-            files_to_delete.update(os.listdir(commit_folder))
-
-        for file in files_to_delete:
-            if os.path.exists(file):
-                os.remove(file)
-                print(f"Deleted: {file}")
-
-        # Remove these files from track.json
-        tracked_files = self.load_tracked_files()
-        for file in files_to_delete:
-            tracked_files.pop(file, None)
-        self.save_tracked_files(tracked_files)
-
-
-
-
-
-
-
-
-
-    def restore_files_to_commit(self, commit_id):
-        """Restore files from the most recent valid commit <= target commit."""
-        all_commits = sorted(os.listdir(self.COMMITS_DIR))
-        relevant_commits = all_commits[: all_commits.index(commit_id) + 1]
-
-        restored_files = {}
-        for commit in reversed(relevant_commits):
-            commit_folder = os.path.join(self.COMMITS_DIR, commit)
-            for file in os.listdir(commit_folder):
-                if file not in restored_files:
-                    shutil.copy2(os.path.join(commit_folder, file), file)
-                    restored_files[file] = True
-                    print(f"Restored: {file} from commit {commit}")
-
-
-
-
-
-
-
-
-    def verify_restored_files(self):
-        """Ensure all restored files match their expected hashes."""
-        tracked_files = self.load_tracked_files()
-        for file, expected_hash in tracked_files.items():
-            if os.path.exists(file):
-                current_hash = self.hash_file(file)
-                if current_hash != expected_hash:
-                    print(f"Hash mismatch for {file}! Expected: {expected_hash}, Found: {current_hash}")
-
-
-
-
-
-
-
-    def delete_commit_history_after(self, commit_id):
-        """Delete commit history beyond the target commit."""
-        all_commits = sorted(os.listdir(self.COMMITS_DIR))
-        commits_to_delete = all_commits[all_commits.index(commit_id) + 1:]
-
-        for commit in commits_to_delete:
-            shutil.rmtree(os.path.join(self.COMMITS_DIR, commit))
-            print(f"Deleted commit history: {commit}")
-
-        # Update log.json to reflect the rollback
-        log_data = self.load_commit_log()
-        updated_log = [entry for entry in log_data if entry["commit_id"] <= commit_id]
-        with open(self.LOG_FILE, 'w') as f:
-            json.dump(updated_log, f, indent=4)
-
-
-
-
-
-
-
-
-    def log_rollback(self, commit_id):
-        """Log rollback information in rollback.json."""
-        rollback_data = {
-            "rollback_to": commit_id,
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        }
-
-        with open(".mama/rollback.json", 'w') as f:
-            json.dump(rollback_data, f, indent=4)
 
 
 

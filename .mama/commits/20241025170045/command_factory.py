@@ -1,7 +1,7 @@
 # command_factory.py
 
 from commands import InitCommand, AddCommand, CommitCommand, StatusCommand, LogCommand, DiffCommand
-from commands import RollbackCommand, CommitDetailsCommand, PullRepoCommand
+from commands import RollbackCommand, CommitDetailsCommand
 
 class CommandFactory:
     """Factory to create command objects based on user input."""
@@ -37,7 +37,6 @@ class CommandFactory:
             "dekhao": CommitDetailsCommand,
             "alada_ki": DiffCommand,
             "fire_jao": RollbackCommand,
-            "niye_aso": PullRepoCommand,
         }
 
         if command_name not in commands:
