@@ -105,22 +105,7 @@ class Repository:
 
 
     def add(self, filename):
-        """
-        Adds a file to the tracking system.
-        This method checks if the specified file exists and computes its hash. If the file is already tracked and 
-        unchanged, it skips the addition. Otherwise, it updates the tracking information and adds the file to the index.
-        Args:
-            filename (str): The name of the file to be added.
-        Returns:
-            None
-        Raises:
-            None
-        Side Effects:
-            - Prints messages to the console regarding the status of the file addition.
-            - Updates the tracking information in the tracking file.
-            - Appends the filename to the index file.
-        """
-        
+        """Add a file if its hash has changed since the last commit."""
         tracked_files = self.load_tracked_files()
 
         if not os.path.exists(filename):
