@@ -1,1 +1,3 @@
-__pycache__/
+mama.spec
+build/
+dist/
