@@ -1,3 +1,4 @@
 mama.spec
 build/
 dist/
+venv/

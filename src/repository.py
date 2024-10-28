@@ -626,31 +626,29 @@ class Repository:
 
 
     def rollback(self, commit_id):
-        """
-        Rollback to a specified commit by restoring relevant files
-        and removing commit history after the target commit.
-        """
-        commit_folder = os.path.join(self.COMMITS_DIR, commit_id)
-        if not os.path.exists(commit_folder):
-            print(f"Commit {commit_id} er information pailam na mama.")
+        """Rollback to a specific commit by restoring files and removing commit history."""
+        if not os.path.exists(os.path.join(self.COMMITS_DIR, commit_id)):
+            print(f"Commit {commit_id} not found.")
             return
 
         # Step 1: Delete files created after the target commit
         self.delete_files_after_commit(commit_id)
 
-        # Step 2: Restore files from the most recent commit <= target commit
+        # Step 2: Restore files to their correct paths from relevant commits
         self.restore_files_to_commit(commit_id)
 
-        # Step 3: Verify hashes of restored files
+        # Step 3: Verify restored files
         self.verify_restored_files()
 
         # Step 4: Delete commit history after the target commit
         self.delete_commit_history_after(commit_id)
 
-        # Step 5: Store rollback information in rollback.json
+        # Step 5: Log rollback information
         self.log_rollback(commit_id)
 
-        print(f"Successfully rolled back to commit {commit_id}, mama.")
+        print(f"Successfully rolled back to commit {commit_id}.")
+
+
 
 
 
@@ -688,18 +686,37 @@ class Repository:
 
 
     def restore_files_to_commit(self, commit_id):
-        """Restore files from the most recent valid commit <= target commit."""
+        """Restore files to their original paths based on log.json for the specified commit."""
         all_commits = sorted(os.listdir(self.COMMITS_DIR))
         relevant_commits = all_commits[: all_commits.index(commit_id) + 1]
 
+        # Load log data to map files to their correct paths
+        log_data = self.load_commit_log()
         restored_files = {}
+
+        # Iterate over relevant commits in reverse to restore the latest version <= commit_id
         for commit in reversed(relevant_commits):
-            commit_folder = os.path.join(self.COMMITS_DIR, commit)
-            for file in os.listdir(commit_folder):
-                if file not in restored_files:
-                    shutil.copy2(os.path.join(commit_folder, file), file)
-                    restored_files[file] = True
-                    print(f"Restored: {file} from commit {commit}")
+            commit_entry = next((entry for entry in log_data if entry["commit_id"] == commit), None)
+            if not commit_entry:
+                continue  # Skip if no matching log entry found
+
+            for file_info in commit_entry["files"]:
+                file_name = file_info["file_name"]  # This includes the original path
+                commit_folder = os.path.join(self.COMMITS_DIR, commit)
+                source_path = os.path.join(commit_folder, os.path.basename(file_name))  # File is stored without structure
+
+                # Ensure the original path is recreated
+                target_path = os.path.join(".", file_name)  # Restore to the original path from log.json
+                target_dir = os.path.dirname(target_path)
+                os.makedirs(target_dir, exist_ok=True)
+
+                # Copy the file only if it hasn't been restored yet
+                if file_name not in restored_files:
+                    shutil.copy2(source_path, target_path)
+                    restored_files[file_name] = True
+                    print(f"Restored: {file_name} to {target_path} from commit {commit}")
+
+
 
 
 
